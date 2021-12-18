@@ -21,13 +21,6 @@ countHasUniqueSegs xs = sum [1 | x <- xs, (length x) `elem` [2,3,4,7]]
 pt2 :: [([String], [String])] -> Int
 pt2 r = sum $ map (\(x, y) -> clockVal (deduce $ map sort x) y) r
 
--- TODO TODO TODO
--- 
--- Some of these fuckers are out of order. See trace function run against
--- this fucking bullshit fuck off.  It's probably just some dumb bullshit
---
--- TODO TODO TODO
-
 -- Value of the clock shit for a given line
 clockVal :: [String] -> [String] -> Int
 clockVal sigs outs | trace ("myfun " ++ show (stringify $ map (\x -> xMachina x sigs) (sort outs))) False = undefined
