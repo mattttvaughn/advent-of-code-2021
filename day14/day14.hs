@@ -1,35 +1,55 @@
-import Data.Maybe
+import Data.Ord
 import Data.List 
 import Data.List.Split
-import Data.Map (Map, fromList)
+import Data.Map (Map, (!), fromList)
 import qualified Data.Map as Map
+
+type PairFreqs = [(String,Int)]
+type PairFreq = (String,Int)
+type ReplacementMap = Map String String
 
 main = do
    raw <- readFile "input.txt"
-   let polySeq = head $ lines raw
+   let polyPairMap = toFreq $ window2 $ head $ lines raw
    let seqMap = fromList $ map tuple2 $ map (splitOn " -> ") $ drop 2 $ lines raw
-   print $ freqDiff $ replace seqMap polySeq 10
-   -- TODO: too slow for part 2... will have to refactor to be smarter
+   -- minus one because of the end characters, which are misrepresented
+   -- since we halve the characters in our "bigram" count we're using.
+   -- I think this may differ depending on whether first/last chars are the
+   -- most frequent
+   print $ (freqDiff $ replace seqMap polyPairMap 10) - 1 
+   print $ (freqDiff $ replace seqMap polyPairMap 40) - 1
 
--- Return count of most freq element minus least freq element
-freqDiff :: [Char] -> Int
-freqDiff a = (maximum pairs) - (minimum pairs)
-    where pairs = Map.elems $ toFreq a
+charFreq :: PairFreqs -> [(Char, Int)]
+charFreq freqs = mergePairs $ concat $ map (\(ss,freq) -> [(head ss, freq), (last ss, freq)]) freqs
 
-toFreq :: [Char] -> Map Char Int
-toFreq x = fromList $ map (\x -> (head x, length x)) (group $ sort x)
+freqDiff :: PairFreqs -> Int
+freqDiff freqs = maximum (map snd charFreqs) `div` 2 - minimum (map snd charFreqs) `div` 2
+    where charFreqs = charFreq freqs
 
-replace m s 0 = s
-replace m s n = replace m (replacePairs m s) (n - 1)
+toFreq :: (Ord a) => [a] -> [(a, Int)]
+toFreq x = map (\x -> (head x, length x)) (group $ sort x)
 
-replacePairs :: Map String String -> String -> String
-replacePairs m s = (concat $ map (replacePair m) $ window2 s) ++ [last s]
+replace :: ReplacementMap -> PairFreqs -> Int -> PairFreqs
+replace m freqs 0 = freqs
+replace m freqs n = replace m (replacePairs m freqs) (n - 1)
 
-replacePair :: Map String String -> String -> String
-replacePair m s = [head s] ++ replacer 
-    where replacer = fromMaybe "" $ Map.lookup s m
+replacePairs :: ReplacementMap -> PairFreqs -> PairFreqs
+replacePairs m freqs = mergePairs $ concat $ map newPair freqs
+    where newPair pair = replacePair pair (m ! (fst pair))
 
-tuple2 [x,y] = (x,y)
+replacePair :: PairFreq -> String -> PairFreqs
+replacePair (pair,freq) c = [(newPair1, freq), (newPair2, freq)]
+    where newPair1 = [head pair] ++ c
+          newPair2 = c ++ [last pair]
+
+mergePairs :: (Num b, Ord a, Ord b) => [(a, b)]-> [(a, b)]
+mergePairs pairs = map sumSnd $ groupBy (\a b -> fst a == fst b) $ sort pairs
+
+sumSnd :: (Num b) => [(a,b)] -> (a,b)
+sumSnd xs = (fst $ head xs, sum $ map snd xs)
 
 -- Sliding window size 2, https://twitter.com/GabriellaG439/status/701460899589017600
 window2 xs = init $ Data.List.transpose (take 2 (tails xs))
+
+tuple2 [x,y] = (x,y)
+
